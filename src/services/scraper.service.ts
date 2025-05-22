@@ -1,147 +1,128 @@
 import { BookData } from '../models/book.model';
 import { AppError } from '../utils/error-handler';
 import { Logger } from '../utils/logger';
-import { chromium } from 'playwright';
+import { chromium, Page } from 'playwright';
 
 export class ScraperService {
     async scrapeBooksByTheme(theme: string): Promise<BookData[]> {
-        Logger.info(`Starting scraping for theme: ${theme}`);
+        Logger.info(`Scraping books for theme: ${theme}`);
 
         const browser = await chromium.launch({
             headless: true,
             executablePath: process.env.CHROME_PATH || undefined
         });
 
-        const context = await browser.newContext();
-        const page = await context.newPage();
-        const books: BookData[] = [];
-
         try {
-            await page.goto(`https://bookdp.com.au/?s=${encodeURIComponent(theme)}&post_type=product`, {
-                waitUntil: 'networkidle',
-                timeout: 60000
-            });
+            const context = await browser.newContext();
+            const page = await context.newPage();
 
-            await page.waitForSelector('.product.type-product', { timeout: 30000 });
+            const books: BookData[] = [];
 
-            const firstPageBooks = await this.scrapeCurrentPage(page);
-            books.push(...firstPageBooks);
+            await this.searchForTheme(page, theme);
+            books.push(...await this.scrapeCurrentPage(page));
 
-            const hasNextPage = await page.$('.pagination-next, .next.page-numbers');
-            if (hasNextPage) {
-                await page.click('.pagination-next, .next.page-numbers');
-                await page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 });
-                await page.waitForSelector('.product.type-product', { timeout: 30000 });
-
-                const secondPageBooks = await this.scrapeCurrentPage(page);
-                books.push(...secondPageBooks);
+            if (await this.hasNextPage(page)) {
+                await this.goToNextPage(page);
+                books.push(...await this.scrapeCurrentPage(page));
             }
 
             return books;
         } catch (error) {
-            Logger.error(`Error while scraping: ${(error as Error).message}`);
+            Logger.error(`Scraping failed: ${(error as Error).message}`);
             throw new AppError(`Failed to scrape books: ${(error as Error).message}`, 500);
         } finally {
             await browser.close();
         }
     }
 
-    private async scrapeCurrentPage(page: any): Promise<BookData[]> {
-        // First, get all product URLs from the list page
-        const productUrls = await page.evaluate(() => {
-            const bookElements = document.querySelectorAll('.product.type-product');
-            const urls: string[] = [];
+    private async searchForTheme(page: Page, theme: string): Promise<void> {
+        const url = `https://bookdp.com.au/?s=${encodeURIComponent(theme)}&post_type=product`;
+        await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+        await page.waitForSelector('.product.type-product', { timeout: 30000 });
+    }
 
-            bookElements.forEach((element) => {
-                const titleElement = element.querySelector('.woocommerce-loop-product__title a');
-                if (titleElement) {
-                    const url = titleElement.getAttribute('href');
-                    if (url) urls.push(url);
-                }
-            });
+    private async hasNextPage(page: Page): Promise<boolean> {
+        return !!(await page.$('.pagination-next, .next.page-numbers'));
+    }
 
-            return urls;
-        });
+    private async goToNextPage(page: Page): Promise<void> {
+        await page.click('.pagination-next, .next.page-numbers');
+        await page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 });
+        await page.waitForSelector('.product.type-product', { timeout: 30000 });
+    }
 
-        // Then visit each product page to get detailed information
+    private async scrapeCurrentPage(page: Page): Promise<BookData[]> {
+        const urls = await this.extractProductUrls(page);
         const books: BookData[] = [];
 
-        for (const url of productUrls) {
-            try {
-                // Navigate to the product detail page
-                await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-
-                // Extract detailed information from the product page
-                const bookData = await page.evaluate(() => {
-                    try {
-                        // Extract title
-                        const title = document.querySelector('.product_title')?.textContent?.trim() || '';
-
-                        // Extract price information
-                        const currentPriceElement = document.querySelector('.price ins .woocommerce-Price-amount');
-                        let currentPriceText = currentPriceElement?.textContent?.trim() || '';
-                        currentPriceText = currentPriceText.replace(/[^\d.]/g, '');
-                        const currentPrice = parseFloat(currentPriceText) || 0;
-
-                        const originalPriceElement = document.querySelector('.price del .woocommerce-Price-amount');
-                        let originalPrice;
-                        if (originalPriceElement) {
-                            let originalPriceText = originalPriceElement.textContent?.trim() || '';
-                            originalPriceText = originalPriceText.replace(/[^\d.]/g, '');
-                            originalPrice = parseFloat(originalPriceText) || undefined;
-                        }
-
-                        // Extract description
-                        const shortDescription = document.querySelector('.woocommerce-product-details__short-description')?.textContent?.trim() || '';
-
-                        // Try to get more detailed info from meta
-                        const metaRows = document.querySelectorAll('.short-description table tr');
-                        let author = '';
-                        let description = shortDescription;
-
-                        if (metaRows.length > 0) {
-                            const metaInfo: string[] = [];
-                            metaRows.forEach(row => {
-                                const label = row.querySelector('th')?.textContent?.trim() || '';
-                                const value = row.querySelector('td')?.textContent?.trim() || '';
-
-                                if (label && value) {
-                                    // Try to find author-related info
-                                    if (label.toLowerCase().includes('author')) {
-                                        author = value;
-                                    }
-
-                                    metaInfo.push(`${label}: ${value}`);
-                                }
-                            });
-
-                            if (metaInfo.length > 0) {
-                                description = metaInfo.join('. ');
-                            }
-                        }
-
-                        return {
-                            title,
-                            author,
-                            currentPrice,
-                            originalPrice,
-                            description,
-                            productUrl: window.location.href
-                        };
-                    } catch (err) {
-                        console.error('Error extracting product details:', err);
-                        return null;
-                    }
-                });
-
-                if (bookData && bookData.title && bookData.currentPrice > 0) {
-                    books.push(bookData);
-                }
-            } catch (error) {
-                console.error(`Error processing product page ${url}: ${error}`);
-            }
+        for (const url of urls) {
+            const book = await this.scrapeProductDetails(page, url);
+            if (book) books.push(book);
         }
 
         return books;
+    }
+
+    private async extractProductUrls(page: Page): Promise<string[]> {
+        return page.evaluate(() => {
+            return Array.from(document.querySelectorAll('.product.type-product .woocommerce-loop-product__title a'))
+                .map(el => el.getAttribute('href'))
+                .filter((url): url is string => !!url);
+        });
+    }
+
+
+    private async scrapeProductDetails(page: Page, url: string): Promise<BookData | null> {
+        try {
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+
+            return await page.evaluate(async () => {
+                const getText = (selector: string): string =>
+                    document.querySelector(selector)?.textContent?.trim() || '';
+
+                const parsePrice = (selector: string): number | undefined => {
+                    const text = getText(selector).replace(/[^\d.]/g, '');
+                    const value = parseFloat(text);
+                    return isNaN(value) ? undefined : value;
+                };
+
+                const extractPublisher = () => {
+                    const rows = document.querySelectorAll('.short-description__content table tr');
+
+                    for (const row of Array.from(rows)) {
+                        const label = row.querySelector('th')?.textContent?.trim().toLowerCase();
+                        if (label === 'publisher:') {
+                            const value = row.querySelector('td')?.textContent?.trim();
+                            return value || '';
+                        }
+                    }
+                    return '';
+                }
+
+                const title = getText('.product_title');
+                const currentPrice = parsePrice('.price ins .woocommerce-Price-amount') || 0;
+                const originalPrice = parsePrice('.price del .woocommerce-Price-amount');
+
+                const shortDesc = getText('.woocommerce-product-details__short-description');
+
+
+                let author = await extractPublisher();
+                let description = shortDesc;
+
+                if (!title || currentPrice <= 0) return null;
+
+                return {
+                    title,
+                    author,
+                    currentPrice,
+                    originalPrice,
+                    description,
+                    productUrl: window.location.href
+                };
+            });
+        } catch (err) {
+            Logger.warn(`Failed to scrape product at ${url}: ${(err as Error).message}`);
+            return null;
+        }
     }
 }
