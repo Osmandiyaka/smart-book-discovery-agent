@@ -38,6 +38,10 @@ This application automates the process of discovering and analyzing books based 
                         └─────────────────┘
 ```
 
+### MAKE.COM INTEGRATION
+![Logo](assets/make.com-integration.png)
+
+
 ### Core Components
 
 #### 1. **Job Service**
