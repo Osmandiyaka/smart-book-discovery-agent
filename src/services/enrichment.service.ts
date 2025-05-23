@@ -1,35 +1,28 @@
 import { BookData, EnrichedBookData } from '../models/book.model';
 import { Logger } from '../utils/logger';
-import { OpenAIApi } from 'openai';
-import { openaiConfig } from '../config/openai';
+import { AIProvider } from '../providers/ai-provider.interface';
+import { AIProviderFactory } from '../providers/ai-provider.factory';
+import { aiConfig } from '../config/ai.config';
 
 export class EnrichmentService {
-    private openai: OpenAIApi;
+    private aiProvider: AIProvider;
 
     constructor() {
-        this.openai = new OpenAIApi(openaiConfig);
+        this.aiProvider = AIProviderFactory.create(aiConfig);
+        Logger.info(`EnrichmentService initialized with ${aiConfig.provider} provider`);
     }
 
     async enrichBooks(books: BookData[], theme: string): Promise<EnrichedBookData[]> {
-        Logger.info(`Starting AI enrichment for ${books.length} books`);
+        Logger.info(`Starting enrichment for ${books.length} books using ${aiConfig.provider}`);
 
         const enrichedBooks: EnrichedBookData[] = [];
 
         for (const book of books) {
             try {
                 const summary = await this.generateSummary(book.description);
-
                 const relevanceScore = await this.calculateRelevanceScore(book.description, theme);
-
-                let discountAmount: number | undefined;
-                let discountPercentage: number | undefined;
-
-                if (book.originalPrice && book.originalPrice > book.currentPrice) {
-                    discountAmount = book.originalPrice - book.currentPrice;
-                    discountPercentage = (discountAmount / book.originalPrice) * 100;
-                }
-
-                const valueScore = relevanceScore / book.currentPrice;
+                const { discountAmount, discountPercentage } = this.computeDiscount(book.originalPrice, book.currentPrice);
+                const valueScore = this.calculateValueScore(relevanceScore, book.currentPrice);
 
                 enrichedBooks.push({
                     ...book,
@@ -37,57 +30,98 @@ export class EnrichmentService {
                     relevanceScore,
                     discountAmount,
                     discountPercentage,
-                    valueScore
+                    valueScore,
                 });
 
                 Logger.debug(`Enriched book: ${book.title}`);
             } catch (error) {
-                Logger.error(`Error enriching book ${book.title}: ${(error as Error).message}`);
+                Logger.error(`Failed to enrich "${book.title}": ${(error as Error).message}`);
             }
         }
 
-        Logger.info(`Completed AI enrichment for ${enrichedBooks.length} books`);
+        Logger.info(`Enrichment completed for ${enrichedBooks.length} books`);
         return enrichedBooks;
     }
 
     private async generateSummary(description: string): Promise<string> {
-        const prompt = `
-      Summarize the following book description in 1-2 sentences:
-      
-      "${description}"
-      
-      Summary:
-    `;
+        const prompt = `Summarize the following book description in 1-2 sentences:
 
-        const response = await this.openai.createCompletion({
-            model: "gpt-4.1",
-            prompt,
-            max_tokens: 100,
-            temperature: 0.5,
-        });
+"${description}"
 
-        return response.data.choices[0].text?.trim() || "No summary available.";
+Summary:`.trim();
+
+        try {
+            const response = await this.aiProvider.generateCompletion({
+                prompt,
+                maxTokens: 100,
+                temperature: 0.5,
+            });
+
+            return response.text || "No summary available.";
+        } catch (error) {
+            Logger.warn(`Failed to generate summary, using fallback: ${(error as Error).message}`);
+            return this.generateFallbackSummary(description);
+        }
     }
 
     private async calculateRelevanceScore(description: string, theme: string): Promise<number> {
-        const prompt = `
-      On a scale from 0 to 100, how relevant is the following book description to the theme "${theme}"?
-      
-      Book description: "${description}"
-      
-      Relevance score (just provide a number from 0 to 100):
-    `;
+        const prompt = `On a scale from 0 to 100, how relevant is the following book description to the theme "${theme}"?
 
-        const response = await this.openai.createCompletion({
-            model: "gpt-4.1",
-            prompt,
-            max_tokens: 10,
-            temperature: 0.3,
-        });
+Book description: "${description}"
 
-        const scoreText = response.data.choices[0].text?.trim() || "0";
-        const score = parseInt(scoreText.replace(/\D/g, ''));
+Relevance score (just provide a number from 0 to 100):`.trim();
 
-        return Math.min(Math.max(score, 0), 100);
+        try {
+            const response = await this.aiProvider.generateCompletion({
+                prompt,
+                maxTokens: 10,
+                temperature: 0.3,
+            });
+
+            const scoreText = response.text || "0";
+            const score = parseInt(scoreText.replace(/\D/g, ''), 10);
+
+            return Math.min(Math.max(score, 0), 100);
+        } catch (error) {
+            Logger.warn(`Failed to calculate relevance score, using fallback: ${(error as Error).message}`);
+            return this.generateFallbackRelevanceScore(description, theme);
+        }
+    }
+
+    private generateFallbackSummary(description: string): string {
+        const sentences = description.split(/[.!?]+/);
+        if (sentences.length > 0 && sentences[0].length > 10) {
+            return sentences[0].trim() + '.';
+        }
+        return description.length > 100
+            ? description.substring(0, 97) + '...'
+            : description;
+    }
+
+    private generateFallbackRelevanceScore(description: string, theme: string): number {
+        const themeWords = theme.toLowerCase().split(/\s+/);
+        const descWords = description.toLowerCase().split(/\s+/);
+
+        let matches = 0;
+        for (const themeWord of themeWords) {
+            if (descWords.some(descWord => descWord.includes(themeWord) || themeWord.includes(descWord))) {
+                matches++;
+            }
+        }
+
+        return Math.min((matches / themeWords.length) * 100, 100);
+    }
+
+    private computeDiscount(originalPrice?: number, currentPrice?: number) {
+        if (originalPrice && currentPrice && originalPrice > currentPrice) {
+            const discountAmount = originalPrice - currentPrice;
+            const discountPercentage = (discountAmount / originalPrice) * 100;
+            return { discountAmount, discountPercentage };
+        }
+        return { discountAmount: undefined, discountPercentage: undefined };
+    }
+
+    private calculateValueScore(relevanceScore: number, currentPrice: number): number {
+        return currentPrice > 0 ? relevanceScore / currentPrice : 0;
     }
 }

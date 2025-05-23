@@ -30,7 +30,6 @@ export class JobService {
 
         this.jobs.set(jobId, job);
 
-        // Start job processing in the background
         this.processJob(jobId).catch(error => {
             Logger.error(`Job ${jobId} failed: ${error.message}`, { jobId, error });
             this.updateJobStatus(jobId, JobStatus.FAILED, error.message);
