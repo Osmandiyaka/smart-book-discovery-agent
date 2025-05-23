@@ -257,29 +257,6 @@ Add your Make.com webhook URL to your environment file:
 MAKECOM_WEBHOOK_URL=https://hook.make.com/your-webhook-id-here
 ```
 
-### Workflow Examples
-
-#### Basic Book Notification Workflow
-
-1. **Webhook Trigger**: Receives enriched book data
-2. **Filter**: Only process books with relevance score > 80
-3. **Email Module**: Send curated book recommendations
-4. **Database Module**: Store high-value books for future reference
-
-#### Advanced Analytics Workflow
-
-1. **Webhook Trigger**: Receives book data
-2. **Data Transformer**: Calculate additional metrics
-3. **Google Sheets**: Log all discovered books
-4. **Slack Notification**: Alert team of high-value discoveries
-5. **Airtable**: Create structured book database
-
-### Integration Service Features
-
-- **Reliable Delivery**: Automatic retry mechanism for failed webhook calls
-- **Error Handling**: Comprehensive logging and fallback procedures  
-- **Data Validation**: Ensures payload integrity before transmission
-- **Rate Limiting**: Respects Make.com webhook rate limits
 
 ## 📝 Assumptions and Limitations
 
@@ -303,77 +280,5 @@ MAKECOM_WEBHOOK_URL=https://hook.make.com/your-webhook-id-here
 - **Network Connectivity**: Reliable internet connection for external API calls
 - **API Limits**: Services operate within rate limits and quotas
 
-### Known Limitations
 
-#### Scalability Constraints
-- **Sequential Processing**: Books are processed one at a time to avoid overwhelming AI providers
-- **Memory Usage**: Large job queues may consume significant memory
-- **Rate Limits**: 
-  - OpenAI: Subject to API rate limits based on subscription tier
-  - Web Scraping: Limited by target site's anti-bot measures
 
-#### Data Quality Limitations
-- **Incomplete Data**: Some books may lack complete information (prices, descriptions)
-- **AI Accuracy**: Relevance scores and summaries depend on AI model quality
-- **Currency**: All prices assumed to be in AUD
-- **Availability**: Stock status may change between scraping and processing
-
-#### Technical Limitations
-- **Browser Dependencies**: Playwright requires system-level browser installations
-- **Error Recovery**: Failed individual book processing doesn't retry automatically
-- **Job Persistence**: Job data is stored in memory (not persistent across restarts)
-- **Concurrent Jobs**: No built-in protection against multiple simultaneous jobs
-
-#### Integration Limitations
-- **Webhook Dependency**: Requires active Make.com subscription and webhook availability
-- **Single Integration**: Currently supports only Make.com (no multi-platform support)
-- **Payload Size**: Large job results may exceed webhook size limits
-
-### Recommendations for Production
-
-#### Scalability Improvements
-- **Database Integration**: Replace in-memory job storage with persistent database
-- **Queue System**: Implement Redis or similar for job queue management
-- **Parallel Processing**: Add worker pools for concurrent book processing
-- **Caching**: Implement Redis caching for frequently accessed data
-
-#### Reliability Enhancements
-- **Retry Mechanisms**: Add exponential backoff for failed operations
-- **Circuit Breakers**: Implement circuit breaker pattern for external dependencies
-- **Health Monitoring**: Add comprehensive health checks and alerting
-- **Backup Providers**: Configure multiple AI provider fallbacks
-
-#### Security Considerations
-- **API Key Management**: Use secure key management systems (AWS Secrets Manager, etc.)
-- **Rate Limiting**: Implement application-level rate limiting
-- **Input Validation**: Add comprehensive input sanitization
-- **Access Control**: Implement authentication and authorization
-
-### Development Notes
-
-- **Local Testing**: Use Ollama for development to avoid API costs and rate limits
-- **Environment Separation**: Maintain strict separation between development and production configurations
-- **Monitoring**: Implement comprehensive logging for debugging and performance analysis
-- **Documentation**: Keep API documentation updated as the system evolves
-
-## 🚀 Deployment Options
-
-The application supports multiple deployment strategies:
-
-- **Local Development**: Direct Node.js execution with npm scripts
-- **Docker**: Containerized deployment with docker-compose
-- **Cloud Platforms**: Compatible with AWS, GCP, Azure container services
-- **Kubernetes**: Scalable orchestration for high-availability deployments
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Make changes and test thoroughly
-4. Commit changes (`git commit -m 'Add amazing feature'`)
-5. Push to branch (`git push origin feature/amazing-feature`)
-6. Open Pull Request
-
-## 📄 License
-
-This project is licensed under the ISC License - see the LICENSE file for details.
