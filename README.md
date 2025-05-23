@@ -42,6 +42,12 @@ This application automates the process of discovering and analyzing books based 
 ![Logo](assets/make.com-integration.png)
 
 
+### Sample Request
+![Logo](assets/request.png)
+
+### Scraped output sample
+![Logo](assets/scrapped.png)
+
 ### Core Components
 
 #### 1. **Job Service**
@@ -74,12 +80,6 @@ interface AIProvider {
 }
 ```
 
-**Benefits:**
-- **Cost Optimization**: Free Ollama for development, OpenAI for production
-- **Rate Limit Management**: Avoid API restrictions during development
-- **Offline Development**: Local AI processing capability
-- **Fallback Mechanisms**: Graceful degradation when AI services fail
-
 ### Data Flow
 
 1. **Job Initialization**: User submits theme-based search request
@@ -107,6 +107,12 @@ cd smart-book-discovery-agent
 npm install
 ```
 
+### Commands
+
+```bash
+npm run start ## for production
+npm run start:dev ##for development which will use olama by default
+```
 #### 2. Environment Configuration
 
 Create environment files based on your development needs:
