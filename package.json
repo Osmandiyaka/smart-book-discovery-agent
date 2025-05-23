@@ -10,6 +10,7 @@
     "dev:ollama": "NODE_ENV=development AI_PROVIDER=ollama ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts dotenv_config_path=.env.development",
     "dev:openai": "NODE_ENV=development AI_PROVIDER=openai ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts dotenv_config_path=.env.development",
     "build": "tsc",
+    "docker": "docker-compose --profile development up --build ",
     "test": "jest",
     "test:env": "NODE_ENV=test jest",
     "lint": "eslint . --ext .ts",

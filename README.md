@@ -113,6 +113,12 @@ npm install
 npm run start ## for production
 npm run start:dev ##for development which will use olama by default
 ```
+
+### Docker
+
+```bash
+npm run docker ## I have included a script to start docker-compose
+```
 #### 2. Environment Configuration
 
 Create environment files based on your development needs:
