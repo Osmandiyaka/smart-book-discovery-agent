@@ -24,7 +24,7 @@ export class JobController {
                 return;
             }
 
-            const job = this.jobService.createJob(theme);
+            const job = await this.jobService.createJob(theme);
 
             const response: ApiResponse<{ jobId: string }> = {
                 success: true,
@@ -48,7 +48,7 @@ export class JobController {
     getJobStatus = async (req: Request, res: Response): Promise<void> => {
         try {
             const { jobId } = req.params;
-            const job = this.jobService.getJob(jobId);
+            const job = await this.jobService.getJob(jobId);
 
             if (!job) {
                 const response: ApiResponse<null> = {
@@ -85,7 +85,7 @@ export class JobController {
     getJobResults = async (req: Request, res: Response): Promise<void> => {
         try {
             const { jobId } = req.params;
-            const job = this.jobService.getJob(jobId);
+            const job = await this.jobService.getJob(jobId);
 
             if (!job) {
                 const response: ApiResponse<null> = {
