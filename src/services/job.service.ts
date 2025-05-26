@@ -42,7 +42,6 @@ export class JobService {
             updatedAt: now
         };
 
-        // await this.queue.add(jobId, job);
         await this.queue.add(jobId, job, { jobId })
         return job;
     }
