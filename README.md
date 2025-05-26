@@ -41,6 +41,9 @@ This application automates the process of discovering and analyzing books based 
 ### MAKE.COM INTEGRATION
 ![Logo](assets/make.com-integration.png)
 
+### MAKE.COM INTEGRATION Google sheet
+![Logo](assets/screen.png)
+
 
 ### Sample Request
 ![Logo](assets/request.png)

@@ -9,6 +9,8 @@ export class EnrichmentService {
 
     constructor() {
         this.aiProvider = AIProviderFactory.create(aiConfig);
+        const provider = process.env.AI_PROVIDER;
+        const p = aiConfig;
         Logger.info(`EnrichmentService initialized with ${aiConfig.provider} provider`);
     }
 

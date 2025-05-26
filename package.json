@@ -4,11 +4,11 @@
   "description": "A TypeScript-based automation agent that scrapes book data from BookDP.com.au",
   "main": "dist/server.js",
   "scripts": {
-    "start": "NODE_ENV=production node -r dotenv/config dist/server.js dotenv_config_path=.env.production",
+    "start": "NODE_ENV=production AI_PROVIDER=openai node -r dotenv/config dist/server.js dotenv_config_path=.env",
     "start:dev": "NODE_ENV=development node -r dotenv/config dist/server.js dotenv_config_path=.env.development",
     "dev": "NODE_ENV=development ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts dotenv_config_path=.env.development",
     "dev:ollama": "NODE_ENV=development AI_PROVIDER=ollama ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts dotenv_config_path=.env.development",
-    "dev:openai": "NODE_ENV=development AI_PROVIDER=openai ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts dotenv_config_path=.env.development",
+    "dev:openai": "NODE_ENV=development AI_PROVIDER=openai ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts dotenv_config_path=.env",
     "build": "tsc",
     "docker": "docker-compose --profile development up --build ",
     "test": "jest",

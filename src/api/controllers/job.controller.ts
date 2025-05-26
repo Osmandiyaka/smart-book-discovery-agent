@@ -108,18 +108,12 @@ export class JobController {
             const response: ApiResponse<{
                 theme: string;
                 books: any[];
-                summary: {
-                    totalBooks: number;
-                    averageRelevanceScore: number;
-                    averageValueScore: number;
-                    topBooks: any[];
-                }
+
             }> = {
                 success: true,
                 data: {
                     theme: job.theme,
                     books: job.enrichedBooks || [],
-                    summary: this.generateSummary(job.enrichedBooks || [])
                 }
             };
 
@@ -136,42 +130,4 @@ export class JobController {
         }
     };
 
-    private generateSummary(enrichedBooks: EnrichedBookData[]) {
-        // Calculate average scores
-        const totalBooks = enrichedBooks.length;
-
-        if (totalBooks === 0) {
-            return {
-                totalBooks: 0,
-                averageRelevanceScore: 0,
-                averageValueScore: 0,
-                topBooks: []
-            };
-        }
-
-        const totalRelevanceScore = enrichedBooks.reduce((sum, book) => sum + book.relevanceScore, 0);
-        const totalValueScore = enrichedBooks.reduce((sum, book) => sum + book.valueScore, 0);
-
-        const averageRelevanceScore = totalRelevanceScore / totalBooks;
-        const averageValueScore = totalValueScore / totalBooks;
-
-        // Get top 3 books by value score
-        const topBooks = [...enrichedBooks]
-            .sort((a, b) => b.valueScore - a.valueScore)
-            .slice(0, 3)
-            .map(book => ({
-                title: book.title,
-                author: book.author,
-                relevanceScore: book.relevanceScore,
-                valueScore: book.valueScore,
-                currentPrice: book.currentPrice
-            }));
-
-        return {
-            totalBooks,
-            averageRelevanceScore,
-            averageValueScore,
-            topBooks
-        };
-    }
 }
