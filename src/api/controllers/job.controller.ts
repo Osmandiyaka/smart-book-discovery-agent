@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { JobService } from '../../services/job.service';
 import { ApiResponse } from '../../models/response.model';
 import { Logger } from '../../utils/logger';
-import { EnrichedBookData } from '../../models/book.model';
 
 export class JobController {
     private jobService: JobService;
