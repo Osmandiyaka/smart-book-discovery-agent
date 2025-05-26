@@ -1,7 +1,7 @@
 import { BookData } from '../models/book.model';
 import { AppError } from '../utils/error-handler';
 import { Logger } from '../utils/logger';
-import { Browser, chromium, Page } from 'playwright';
+import { Browser, Page } from 'playwright';
 import { BrowserPoolService } from './browser-pool.service';
 
 export class ScraperService {
