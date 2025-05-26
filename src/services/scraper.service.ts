@@ -1,37 +1,52 @@
 import { BookData } from '../models/book.model';
 import { AppError } from '../utils/error-handler';
 import { Logger } from '../utils/logger';
-import { chromium, Page } from 'playwright';
+import { Browser, chromium, Page } from 'playwright';
+import { BrowserPoolService } from './browser-pool.service';
 
 export class ScraperService {
+    private browserPool: BrowserPoolService;
+    constructor() {
+        this.browserPool = BrowserPoolService.getInstance();
+    }
     async scrapeBooksByTheme(theme: string): Promise<BookData[]> {
         Logger.info(`Scraping books for theme: ${theme}`);
 
-        const browser = await chromium.launch({
-            headless: true,
-            executablePath: process.env.CHROME_PATH || undefined
-        });
+        let browserId: string | null = null;
+        let browser: Browser | null = null;
 
         try {
-            const context = await browser.newContext();
-            const page = await context.newPage();
+            const browserInstance = await this.browserPool.getBrowser();
+            browser = browserInstance.browser;
+            browserId = browserInstance.browserId;
 
             const books: BookData[] = [];
 
-            await this.searchForTheme(page, theme);
-            books.push(...await this.scrapeCurrentPage(page));
+            const context = await browser.newContext();
 
-            if (await this.hasNextPage(page)) {
-                await this.goToNextPage(page);
+            const page = await context.newPage();
+
+            try {
+                await this.searchForTheme(page, theme);
                 books.push(...await this.scrapeCurrentPage(page));
+
+                if (await this.hasNextPage(page)) {
+                    await this.goToNextPage(page);
+                    books.push(...await this.scrapeCurrentPage(page));
+                }
+
+                return books;
+            } finally {
+                await context.close();
             }
 
-            return books;
         } catch (error) {
             Logger.error(`Scraping failed: ${(error as Error).message}`);
             throw new AppError(`Failed to scrape books: ${(error as Error).message}`, 500);
         } finally {
-            await browser.close();
+            if (browserId) {
+                await this.browserPool.releaseBrowser(browserId);
+            }
         }
     }
 
